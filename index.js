@@ -1,41 +1,36 @@
 const express = require('express')
+//create models teams
+const models = require('./models/teams')
 //declaring express a value of require with the param of express
-const teams = require('./teams.json')
+// goals to remove this:
+const Op = require('sequelize').Op
 //declaring team a value of require with param of teams.json
 const app = express()
 //declaring app a value of express with open param
 const bodyParser = require('body-parser')
 
-app.get('/teams', (request, response) => {
-    response.send(teams)
+app.get('/teams', async (req,res) => {
+    const teams = await models.teams.findAll()
+        res.send(teams)
 })
-
-app.get('/teams/:filter', (request, response) => {
-    let result = teams.filter((team) => {
-        let filter = request.params.filter
-        console.log(filter)
-        return team.id == filter || team.abbreviation == filter
+app.get('/teams/:filter', async (req,res) => {
+    const {filter} = req.params
+   const match = await models.teams.findOne({
+        where: { [Op.or]: [{id: filter}, {abbreviation: filter}]}
     })
-    response.send(result)
-})
-
-app.post('/teams', bodyParser.json(), (request, response) => {
-    const body = request.body
-    let newTeams = teams.concat(body)
-
-    if (!body.location ) {
-        response.send('Must specify location.')
+        if (match) {
+    res.send(match)
     }
-    if (!body.mascot ) {
-        response.send('Must specify mascot.')
+    else { res.sendStatus(404)}
+})
+app.post('/teams', bodyParser.json(), async (req,res) => {
+    const body = req.body
+    if (!body.id || !body.location || !body.mascot || !body.abbreviation || !body.conference || !body.division) {
+        res.status(400).send('The following attributes are required: location, mascot, abbreviation, conference, division')
     }
-    console.log({body})
-    response.send(newTeams)
+    const newTeam = await models.teams.create(body)
+    res.status(201).send(body)
 })
-app.all('*', (request, response) => {
-    response.send('Be Specific')
-})
-
-app.listen(1337, (request, response) => {
-    console.log('Server up and running')
-})
+    app.listen(1338, () => {
+        console.log(`Listening on 1338`)
+    })
